@@ -4,6 +4,7 @@ from pathlib import Path
 import torchaudio
 import torch
 import os
+import yaml
 
 def list_files_with_paths(directory):
     file_paths = []
@@ -12,7 +13,14 @@ def list_files_with_paths(directory):
             file_paths.append(os.path.join(root, file))
     return file_paths
 
-
+def yaml_to_dict(yaml_file):
+    with open(yaml_file, 'r') as file:
+        try:
+            return yaml.safe_load(file)
+        except yaml.YAMLError as exc:
+            print(exc)
+            return None
+        
 class EncodecDataset(Dataset):
     
     def __init__(

@@ -13,6 +13,7 @@ from encodec import EncodecModel
 from encodec.msstftd import MultiScaleSTFTDiscriminator
 from dataset import EncodecDataset, get_random_chunk, composed_transform, list_files_with_paths
 from metrics import ReconstructionLossTime, GenLoss, DiscLoss
+from plot import plot_compare_time, plot_compare_frequency, plot_compare_histogram, plot_compare_spectrogram, plot_learning_curve
 
 def train(
         data_dir: str="./data/", 
@@ -24,8 +25,9 @@ def train(
         epochs: int=5,
         lr: float=5e-5,
         betas: tuple=(0.5, 0.999),
-        save_path: str="./pretrained.ckpt",
+        save_path: str="./pretrains/pretrained.ckpt",
         pretrained: str=None,
+        plotting: bool=False,
         **kwargs
         ):
     if pretrained:
@@ -35,7 +37,7 @@ def train(
         optimizer = state.optimizer
         optimizer_disc = state.optimizer_disc
     else:
-        model = EncodecModel.encodec_model_24khz()
+        model = EncodecModel.encodec_model_24khz(pretrained=False)
 
     model.set_target_bandwidth(bw)
     model.sample_rate = fs
@@ -88,6 +90,10 @@ def train(
     gen_loss = GenLoss()
     disc_loss = DiscLoss()
 
+    #For plotting
+    train_model_losses, train_rec_losses, train_disc_losses, train_gen_losses, train_feat_losses, train_quant_residual_losses = [], [], [], [], [], []
+    val_model_losses, val_rec_losses, val_disc_losses, val_gen_losses, val_feat_losses, val_quant_residual_losses = [], [], [], [], [], []
+
     for epoch in range(epochs):
         # Training loop
         train_model_loss, train_rec_loss, train_disc_loss, train_gen_loss, train_feat_loss, quant_residual_loss = 0.0, 0.0, 0.0, 0.0, 0.0, 0.0
@@ -138,6 +144,14 @@ def train(
             train_feat_loss += l_feat.item()
             quant_residual_loss += l_w.item()
             
+            if plotting:
+                train_model_losses.append(train_model_loss / (i + 1))
+                train_rec_losses.append(train_rec_loss / (i + 1))
+                train_disc_losses.append(train_disc_loss / n_disc_updates if n_disc_updates > 0 else 0.0)
+                train_gen_losses.append(train_gen_loss / (i + 1))
+                train_feat_losses.append(train_feat_loss / (i + 1))
+                train_quant_residual_losses.append(quant_residual_loss / (i + 1))
+
             #Update progress bar
             progress_bar.set_postfix({
                 "model_loss": train_model_loss / (i + 1),
@@ -151,7 +165,7 @@ def train(
         # Validation loop
         model.eval()
         disc.eval()
-        val_model_loss, val_rec_loss, val_disc_loss, val_gen_loss, val_feat_loss = 0.0, 0.0, 0.0, 0.0, 0.0
+        val_model_loss, val_rec_loss, val_disc_loss, val_gen_loss, val_feat_loss, val_quant_residual_loss = 0.0, 0.0, 0.0, 0.0, 0.0, 0.0
         with torch.inference_mode():
             for inp in val_dataloader:
                 outputs, l_w = model(inp, res_loss=True)
@@ -174,13 +188,35 @@ def train(
                 val_disc_loss += l_d.item()
                 val_gen_loss += l_g.item()
                 val_feat_loss += l_feat.item()
-                
+                val_quant_residual_loss += l_w.item()
+
         val_len = len(val_dataloader)
+        
+        if plotting:
+            val_model_losses.append(val_model_loss/val_len)
+            val_rec_losses.append(val_rec_loss/val_len)
+            val_disc_losses.append(val_disc_loss/val_len)
+            val_gen_losses.append(val_gen_loss/val_len)
+            val_feat_losses.append(val_feat_loss/val_len)
+            val_quant_residual_losses.append(val_quant_residual_loss/val_len)
+
         print(f"""Epoch {epoch+1} | Validation Model Loss: {val_model_loss/val_len:.4f},
               Reconstruction Loss: {val_rec_loss/val_len:.4f}, 
               Discriminator Loss: {val_disc_loss/val_len:.4f},
               Generator Loss: {val_gen_loss/val_len:.4f},
-              Feature Loss: {val_feat_loss/val_len:.4f}""")
+              Feature Loss: {val_feat_loss/val_len:.4f},
+              Quantization Residual Loss: {l_w.item():.4f}""")
+
+        plot_compare_time(inp, outputs, window=slice(0, 1000), fs=fs) if plotting else None
+        
+    if plotting:
+        plot_learning_curve(train_model_losses, val_model_losses)
+        plot_learning_curve(train_rec_losses, val_rec_losses)
+        plot_learning_curve(train_disc_losses, val_disc_losses)
+        plot_learning_curve(train_gen_losses, val_gen_losses)
+        plot_learning_curve(train_feat_losses, val_feat_losses)
+        plot_learning_curve(train_quant_residual_losses, val_quant_residual_losses)
+
 
     state = AttributeDict(model=model, disc=disc, optimizer=optimizer, optimizer_disc=optimizer_disc, config=None)    
     fabric.save(save_path, state)
