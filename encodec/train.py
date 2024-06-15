@@ -25,7 +25,8 @@ def train(
         lr: float=5e-5,
         betas: tuple=(0.5, 0.999),
         save_path: str="./pretrained.ckpt",
-        pretrained: str=None
+        pretrained: str=None,
+        **kwargs
         ):
     if pretrained:
         fabric.load(pretrained, state)
@@ -35,7 +36,7 @@ def train(
         optimizer_disc = state.optimizer_disc
     else:
         model = EncodecModel.encodec_model_24khz()
-        
+
     model.set_target_bandwidth(bw)
     model.sample_rate = fs
     data_dir = pathlib.Path(data_dir)
