@@ -49,8 +49,9 @@ def plot_compare_spectrogram(target, pred, fs):
     fig.tight_layout()
     fig.show()
 
-def plot_learning_curve(train_losses, val_losses):
+def plot_learning_curve(train_losses, val_losses, title='loss'):
     fig, ax = plt.subplots(figsize=(10, 4))
+
 
     ax.plot(train_losses, marker='o', label='Training')
     ax.set_xlabel('# epochs')
@@ -60,4 +61,5 @@ def plot_learning_curve(train_losses, val_losses):
     ax.set_xlabel('# epochs')
     ax.set_ylabel('loss')
     ax.legend()
+    ax.set_title(title)
     fig.show()
