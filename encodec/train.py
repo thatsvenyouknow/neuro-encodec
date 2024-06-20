@@ -59,7 +59,7 @@ def train(
         optimizer = state.optimizer
         optimizer_disc = state.optimizer_disc
     else:
-        model = EncodecModel.encodec_model_24khz(pretrained=False)
+        model = EncodecModel.encodec_model_24khz(pretrained=True)
 
     model.set_target_bandwidth(bw)
     model.sample_rate = fs
