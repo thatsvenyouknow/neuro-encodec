@@ -217,8 +217,8 @@ def train(
               Feature Loss: {val_loss_dict["feat"]/val_len:.4f},
               Quantization Residual Loss: {val_loss_dict["quant_residual"]/val_len:.4f}""")
 
-        plot_compare_time(inp, outputs, window=slice(0, 1000), fs=fs) if plotting else None
-        
+        plot_compare_time(inp[0,...], outputs[0,...], window=slice(0, 1000), fs=fs) if plotting else None
+
     if plotting:
         log_learning_curves(train_losses, val_losses)
 
