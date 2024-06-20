@@ -161,10 +161,6 @@ def train(
             train_loss_dict["gen"] += l_g.item()
             train_loss_dict["feat"] += l_feat.item()
             train_loss_dict["quant_residual"] += l_w.item()
-            
-            if plotting:
-                n_disc_updates = 0.0 if not n_disc_updates else n_disc_updates
-                log_losses(train_loss_dict, train_losses, i+1, n_disc_updates, train=True)
 
             #Update progress bar
             progress_bar.set_postfix({
@@ -176,6 +172,10 @@ def train(
                 "quant_residual_loss": train_loss_dict["quant_residual"] / (i + 1)
             }) 
 
+        if plotting:
+                n_disc_updates = 0.0 if not n_disc_updates else n_disc_updates
+                log_losses(train_loss_dict, train_losses, i+1, n_disc_updates, train=True)
+                
         # Validation loop
         model.eval()
         disc.eval()
